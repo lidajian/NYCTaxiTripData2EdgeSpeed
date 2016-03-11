@@ -35,3 +35,4 @@ echo "finish 1"
 cd "../"$1"12"
 ./runcomp.sh
 echo "finish 1"
+cd ..

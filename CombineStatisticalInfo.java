@@ -9,7 +9,7 @@ import java.util.Calendar;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-public class GetStatisticalInfo{
+public class CombineStatisticalInfo{
 
     private static class AnHour{
         public double sum;
@@ -36,6 +36,12 @@ public class GetStatisticalInfo{
     }
 
     private static class DayInWeek{
+
+        final private static int OFFSET_SUM = 48;
+        final private static int OFFSET_SUM2 = 96;
+        final private static int OFFSET_MIN = 144;
+        final private static int OFFSET_MAX = 192;
+
         public AnHour [] weekday = new AnHour[24];
         public AnHour [] weekend = new AnHour[24];
 
@@ -46,8 +52,34 @@ public class GetStatisticalInfo{
             }
         }
 
+        public DayInWeek(String [] parts) throws ParseException{
+            for(int i = 0; i < 24; i++){
+                weekday[i] = new AnHour();
+                weekend[i] = new AnHour();
+            }
+            for(int i = 1; i <= 24; i++){
+                if(!parts[i].equals("NA")){
+                    AnHour h = weekday[i-1];
+                    h.size = Long.parseLong(parts[i]);
+                    h.sum = Double.parseDouble(parts[i+OFFSET_SUM]);
+                    h.sum2 = Double.parseDouble(parts[i+OFFSET_SUM2]);
+                    h.min = Double.parseDouble(parts[i+OFFSET_MIN]);
+                    h.max = Double.parseDouble(parts[i+OFFSET_MAX]);
+                }
+            }
+            for(int i = 25; i <= 48; i++){
+                if(!parts[i].equals("NA")){
+                    AnHour h = weekend[i-25];
+                    h.size = Long.parseLong(parts[i]);
+                    h.sum = Double.parseDouble(parts[i+OFFSET_SUM]);
+                    h.sum2 = Double.parseDouble(parts[i+OFFSET_SUM2]);
+                    h.min = Double.parseDouble(parts[i+OFFSET_MIN]);
+                    h.max = Double.parseDouble(parts[i+OFFSET_MAX]);
+                }
+            }
+        }
+
         public void put(Calendar date, double speed){
-            if(speed > 15) return;
             switch(date.get(Calendar.DAY_OF_WEEK)){
                 case Calendar.SUNDAY:
                 case Calendar.SATURDAY:
@@ -55,6 +87,34 @@ public class GetStatisticalInfo{
                     break;
                 default:
                     weekday[date.get(Calendar.HOUR_OF_DAY)].put(speed);
+            }
+        }
+
+        public void add(String [] parts) throws ParseException{
+            double temp;
+            for(int i = 1; i <= 24; i++){
+                if(!parts[i].equals("NA")){
+                    AnHour h = weekday[i-1];
+                    h.size += Long.parseLong(parts[i]);
+                    h.sum += Double.parseDouble(parts[i+OFFSET_SUM]);
+                    h.sum2 += Double.parseDouble(parts[i+OFFSET_SUM2]);
+                    temp = Double.parseDouble(parts[i+OFFSET_MIN]);
+                    if(temp < h.min) h.min = temp;
+                    temp = Double.parseDouble(parts[i+OFFSET_MAX]);
+                    if(temp > h.max) h.max = temp;
+                }
+            }
+            for(int i = 25; i <= 48; i++){
+                if(!parts[i].equals("NA")){
+                    AnHour h = weekend[i-25];
+                    h.size += Long.parseLong(parts[i]);
+                    h.sum += Double.parseDouble(parts[i+OFFSET_SUM]);
+                    h.sum2 += Double.parseDouble(parts[i+OFFSET_SUM2]);
+                    temp = Double.parseDouble(parts[i+OFFSET_MIN]);
+                    if(temp < h.min) h.min = temp;
+                    temp = Double.parseDouble(parts[i+OFFSET_MAX]);
+                    if(temp > h.max) h.max = temp;
+                }
             }
         }
 
@@ -108,20 +168,20 @@ public class GetStatisticalInfo{
             String edgeid = null;
             DayInWeek dayinweek = null;
             HashMap<String, DayInWeek> records = new HashMap<String, DayInWeek>();
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            Calendar calendar = Calendar.getInstance();
             while((line = br.readLine())!=null){
                 try{
                     String [] parts = line.split("\t");
                     edgeid = parts[0];
 
                     if((dayinweek = records.get(edgeid)) == null){
-                        dayinweek = new DayInWeek();
+                        dayinweek = new DayInWeek(parts);
                         records.put(edgeid, dayinweek);
+                    }else{
+                        dayinweek.add(parts);
                     }
 
-                    calendar.setTime(sdf.parse(parts[1]));
-                    dayinweek.put(calendar, Double.parseDouble(parts[2]));
+
+
                 }catch(ParseException e){
                     e.printStackTrace();
                 }
